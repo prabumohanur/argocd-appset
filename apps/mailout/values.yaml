@@ -1,0 +1,96 @@
+replicas: 1
+
+image:
+  repository: ghcr.io/axllent/mailpit
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+deploymentAnnotations: {}
+annotations: {}
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+securityContext: {}
+
+service: # quickfix for ingress
+  port: '80'
+
+ports:
+  smtp:
+    containerPort: '1025'
+    protocol: 'TCP'
+  http:
+    containerPort: '8025'
+    protocol: 'TCP'
+
+serviceAnnotations: {}
+
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  #  kubernetes.io/ingress.class: ""
+  #  kubernetes.io/tls-acme: "true"
+  hosts:
+  - host: "mailout.dev.klartax.de"
+    paths:
+    - path: ""
+
+  tls: []
+
+resources:
+  limits:
+    memory: 250Mi
+  requests:
+    memory: 150Mi
+
+# livenessProbe:
+#   initialDelaySeconds: 3
+#   periodSeconds: 30
+#   exec:
+#     command:
+#     - /healthcheck.sh
+# readinessProbe:
+#   exec:
+#     command:
+#     - /healthcheck.sh
+
+config:
+  aliases:
+    '@test.de':
+      action: drop
+    '@datevtest.de':
+      action: drop
+  caBundle: null
+
+persistence:
+  enabled: false
+  storageClass: 'default'
+  size: 1Gi
+
+externalSecret: {}
+#  secretStore: vault-backend
+#  name: klartax-mailout-secret
+#  vaultPath: /cnrz/klartax/dev/mailout
+
+configmaps:
+  MAIL_MAILER: smtp
+  MAIL_HOST: mailpit
+  MAIL_PORT: 1025
+  MAIL_USERNAME: testworld
+  MAIL_PASSWORD: testworld
+  MAIL_ENCRYPTION: null
+  MAIL_FROM_ADDRESS: "hello@example.com"
+  MAIL_FROM_NAME: mailserver-test
+  MAIL_ENCRYPTION: null
+  
+  mailpit:
+    MAILPIT_USERNAME: testworld
+    MAILPIT_PASSWORD: testworld

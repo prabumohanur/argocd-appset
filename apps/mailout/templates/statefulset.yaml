@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "mailout.fullname" . }}
+  labels:
+    {{- include "mailout.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mailout
+  {{- with .Values.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  serviceName: {{ template "mailout.fullname" . }}  
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      {{- include "mailout.matchLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mailout
+  template:
+    metadata:
+      {{- with .Values.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "mailout.matchLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mailout        
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "mailout.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: mailout
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - name: smtp
+              containerPort: {{ .Values.ports.smtp.containerPort }}
+              protocol: {{ .Values.ports.smtp.protocol }}
+            - name: http
+              containerPort: {{ .Values.ports.http.containerPort }}
+              protocol: {{ .Values.ports.http.protocol }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          volumeMounts:
+            - mountPath: /opt/app-root/queue/
+              name: queue
+            {{- if .Values.config.aliases }}
+            - mountPath: /opt/app-root/config/aliases
+              name: config
+              subPath: aliases
+            {{- end }}
+            {{- if .Values.config.caBundle }}
+            - mountPath: /opt/app-root/config/ca-bundle.trust.crt
+              name: config
+              subPath: ca-bundle.trust.crt
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "mailout.fullname" . }}-haraka
+            - configMapRef:
+                name: {{ include "mailout.fullname" . }}-mailpit
+#            - secretRef:
+#                name: {{ .Values.externalSecret.name }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /etc/mailpit;
+              echo "${MAILPIT_USERNAME}:${MAILPIT_PASSWORD}" > /etc/mailpit/mailpit.passwd;
+              exec /mailpit \
+                --smtp=0.0.0.0:1025 \
+                --pop3=0.0.0.0:1110 \
+                --ui-auth-file=/etc/mailpit/mailpit.passwd
+      volumes:
+        - name: config
+          configMap:
+            name: "{{ template "mailout.fullname" . }}-config"
+        {{- if not (.Values.persistence.enabled) }}
+        - name: queue
+          emptyDir: {}
+        {{- end }}
+  {{- if (.Values.persistence.enabled) }}
+  volumeClaimTemplates:
+    - metadata:
+        name: queue
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        {{- with .Values.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}
+  {{- end }}

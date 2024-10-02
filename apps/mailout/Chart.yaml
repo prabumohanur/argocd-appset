@@ -1,0 +1,9 @@
+apiVersion: v2
+name: mailout
+description: Klartax mailout chart
+
+type: application
+
+version: 0.1.4
+
+appVersion: "1.169.0-3"

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mailout.fullname" . }}-mailpit
+data:
+  {{- with .Values.configmaps.mailpit }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}

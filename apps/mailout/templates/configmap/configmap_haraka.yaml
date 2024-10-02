@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mailout.fullname" . }}-haraka
+data:
+  {{- with .Values.configmaps.haraka }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
